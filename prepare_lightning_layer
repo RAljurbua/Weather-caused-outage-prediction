@@ -1,0 +1,37 @@
+import pandas as pd
+
+
+def main ():
+    pd.set_option('display.max_column', None)
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_colwidth', None)
+    path_in = 'data/'
+
+    #read transmission lines file
+    lightning = pd.read_csv(path_in + 'Lightning_layer_FIPS.csv', sep=',')
+
+    #convert date format
+    lightning['#ZDAY'] = pd.to_datetime(lightning['#ZDAY'].astype(str), format='%Y%m%d')
+
+    # create network
+    light_network = pd.DataFrame(columns=['node_1', 'node_2', 'date', 'weight'])
+
+    # if a lightning strike occure in two counties at the date create link between nodes and save weight
+    for c1 in lightning.index:
+        for c2 in lightning.index:
+            if (lightning.loc[c1]['#ZDAY'] == lightning.loc[c2]['#ZDAY']):
+                row = {'node_1': lightning.loc[c1]['county'],
+                       'node_2': lightning.loc[c2]['county'],
+                       'date': lightning.loc[c1]['#ZDAY'],
+                       'weight': lightning.loc[c1]['TOTAL_COUNT']+lightning.loc[c2]['TOTAL_COUNT']}
+                light_network = light_network.append(row, ignore_index=True)
+
+    # remove self links
+    light_network = light_network[light_network['node_1'] != light_network['node_2']]
+
+    # save vegetation network as a csv file
+    light_network.to_csv(path_in + 'network/lightning_network.csv')
+
+
+if __name__ == '__main__':
+    main()
