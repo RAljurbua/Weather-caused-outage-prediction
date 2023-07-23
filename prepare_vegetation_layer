@@ -1,0 +1,62 @@
+import pandas as pd
+from scipy.spatial.distance import pdist
+from scipy.spatial.distance import squareform
+
+
+def main ():
+    pd.set_option('display.max_column', None)
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_colwidth', None)
+    path_in = 'data/'
+
+    #read vegitation file
+    vegetation = pd.read_csv(path_in + 'vegetation_layer_FIPS.csv', sep=',')
+    vegetation = vegetation.set_index('county')
+
+    # fill all nan values with
+    vegetation = vegetation.fillna(0)
+    pairwise = pd.DataFrame(squareform(pdist(vegetation)), columns=vegetation.index, index=vegetation.index)
+
+    # # create dataframe to save results
+    veg_dis = pd.DataFrame(columns=['county1', 'county2', 'distance'])
+
+    for r in pairwise.index:
+        for c in pairwise.columns:
+            row  = {'county1': r, 'county2': c, 'distance': pairwise[r][c]}
+            veg_dis = veg_dis.append(row, ignore_index = True)
+
+    veg_dis = veg_dis[veg_dis['county1'] !=  veg_dis['county2']]
+    print('Number of county pairs where distance > 0.5: ' + str(len(veg_dis[veg_dis['distance'] > 0.5])))
+    print()
+    print('Number of county pairs where distance <= 0.5: ' + str(len(veg_dis[veg_dis['distance'] <= 0.5])))
+    print('Number of county pairs where distance <= 0.4: ' + str(len(veg_dis[veg_dis['distance'] <= 0.4])))
+    print('Number of county pairs where distance <= 0.3: ' + str(len(veg_dis[veg_dis['distance'] <= 0.3])))
+    print('Number of county pairs where distance <= 0.2: ' + str(len(veg_dis[veg_dis['distance'] <= 0.2])))
+    print('Number of county pairs where distance <= 0.1: ' + str(len(veg_dis[veg_dis['distance'] <= 0.1])))
+    print('Number of county pairs where distance = 0: ' + str(len(veg_dis[veg_dis['distance'] == 0])))
+
+    # create network
+    veg_network = pd.DataFrame(columns=['node_1', 'node_2', 'weight'])
+    # take only rows with distance <= 0.5
+    veg_dis = veg_dis[veg_dis['distance'] <= 0.5]
+
+    # change values to one decimal point
+    veg_dis['county1'] = veg_dis['county1'].astype(int)
+    veg_dis['county2'] = veg_dis['county2'].astype(int)
+    veg_dis['distance'] = veg_dis['distance'].round(decimals=1)
+
+    # Subtraction: take one of the distance value so smaller distance will represent higher weight
+    veg_dis['distance'] = 1 - veg_dis['distance']
+
+    veg_network['node_1'] = veg_dis['county1']
+    veg_network['node_2'] = veg_dis['county2']
+    veg_network['weight'] = veg_dis['distance']
+
+    print(veg_network.shape)
+
+    # save vegetation network as a csv file
+    veg_network.to_csv(path_in + 'network/vegetation_network.csv')
+
+
+if __name__ == '__main__':
+    main()
