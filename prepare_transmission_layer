@@ -1,0 +1,56 @@
+import pandas as pd
+from collections import Counter
+
+
+def main ():
+    pd.set_option('display.max_column', None)
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_colwidth', None)
+    path_in = 'data/'
+
+    #read transmission lines file
+    transmission = pd.read_csv(path_in + 'BPA_TransmissionLines_layer_FIPS.csv', sep=',')
+
+    # unfold transmission lines
+    lines = transmission['transmission_lines'].str.split(';', expand=True)
+    trans_merge = transmission.merge(lines, left_index=True, right_index=True, how='inner')
+    trans_merge = trans_merge.drop(columns=['county_ID', 'transmission_lines'], axis = 1)
+    trans_merge = trans_merge.set_index('county')
+    trans_merge.columns = [str(col) + '_line' for col in trans_merge.columns]
+
+    # create network
+    trans_network = pd.DataFrame(columns=['node_1', 'node_2', 'weight'])
+
+    for c1 in trans_merge.index:
+        for c2 in trans_merge.index:
+            # remove duplicates in each row
+            set1 = trans_merge.loc[c1].tolist()
+            set2 = trans_merge.loc[c2].tolist()
+            set1 = [*set(set1)]
+            set2 = [*set(set2)]
+            merge_set = set1 + set2
+
+            # remove None and 0 values
+            merge_set = [i for i in merge_set if i is not None]
+            merge_set = [i for i in merge_set if i is not '0']
+
+            # count number of duplicates
+            count = Counter(merge_set)
+            duplicate = int((sum(v for k, v in count.items() if v > 1))/2)
+
+            # if there is duplicates create link between nodes and save weight
+            if (duplicate > 0):
+                row = {'node_1': c1, 'node_2': c2, 'weight': duplicate}
+                trans_network = trans_network.append(row, ignore_index=True)
+
+    # remove self links
+    trans_network = trans_network[trans_network['node_1'] != trans_network['node_2'] ]
+
+    print(trans_network.shape)
+
+    # save vegetation network as a csv file
+    trans_network.to_csv(path_in + 'network/transmission_network.csv')
+
+
+if __name__ == '__main__':
+    main()
