@@ -1,0 +1,111 @@
+import pandas as pd
+
+
+def main ():
+    pd.set_option('display.max_column', None)
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_colwidth', None)
+    path_in = 'data/network/'
+
+    # read files for all networks
+    power = pd.read_csv(path_in + 'event_network_dictinary.csv', sep=',')
+    weather = pd.read_csv(path_in + 'weather_network_dictinary.csv', sep=',')
+    transmission = pd.read_csv(path_in + 'transmission_network.csv', sep=',')
+    vegetation = pd.read_csv(path_in + 'vegetation_network.csv', sep=',')
+    lightning = pd.read_csv(path_in + 'lightning_network.csv', sep=',')
+    twitter = pd.read_csv(path_in + 'twitter_network_dictinary.csv', sep=',')
+    reddit = pd.read_csv(path_in + 'reddit_network_dictinary.csv', sep=',')
+
+    ### create txt file in the following format ('l', 'n1','n2', 'w')
+    ### Note weight for power and weather layers are 1
+    p_network = pd.DataFrame(columns=['l', 'n1', 'n2', 'w', 'date'])
+    w_network = pd.DataFrame(columns=['l', 'n1', 'n2', 'w', 'date'])
+    trans_network = pd.DataFrame(columns=['l', 'n1', 'n2', 'w'])
+    v_network = pd.DataFrame(columns=['l', 'n1', 'n2', 'w'])
+    l_network = pd.DataFrame(columns=['l', 'n1', 'n2', 'w', 'date'])
+    t_network = pd.DataFrame(columns=['l', 'n1', 'n2', 'w', 'date'])
+    r_network = pd.DataFrame(columns=['l', 'n1', 'n2', 'w', 'date'])
+
+    ### L1: create transmission layer ###
+    trans_network['n1'] = transmission['node_1']
+    trans_network['n2'] = transmission['node_2']
+    trans_network['w'] = transmission['weight']
+    trans_network['l'] = 1
+    trans_network.to_csv(path_in + 'layers/transmission_layer.csv')
+    print(trans_network.shape)
+
+    ### L2: create power layer ###
+    p_network['n1'] = power['node_1']
+    p_network['n2'] = power['node_2']
+    p_network['w'] = 1
+    p_network['l'] = 2
+    p_network['date'] = power['out_date_1']
+    # change date format to match rest of the files
+    p_network['date'] = pd.to_datetime(p_network['date'].astype(str), format='%m/%d/%Y')
+    p_network.to_csv(path_in + 'layers/power_layer.csv')
+    print(p_network.shape)
+
+    ### L3: create weather layer ###
+    w_network['n1'] = weather['node_1']
+    w_network['n2'] = weather['node_2']
+    w_network['w'] = 1
+    w_network['l'] = 3
+    w_network['date'] = weather['out_date_1']
+    # change date format to match rest of the files
+    w_network['date'] = pd.to_datetime(w_network['date'].astype(str), format='%m/%d/%Y')
+    w_network.to_csv(path_in + 'layers/weather_layer.csv')
+    print(w_network.shape)
+
+    ### L4: create lightning layer ###
+    l_network['n1'] = lightning['node_1']
+    l_network['n2'] = lightning['node_2']
+    l_network['w'] = lightning['weight']
+    l_network['l'] = 4
+    l_network['date'] = lightning['date']
+    l_network.to_csv(path_in + 'layers/lightning_layer.csv')
+    print(l_network.shape)
+
+    ### L5: create vegetation layer ###
+    v_network['n1'] = vegetation['node_1']
+    v_network['n2'] = vegetation['node_2']
+    v_network['w'] = vegetation['weight']
+    v_network['l'] = 5
+    v_network.to_csv(path_in + 'layers/vegetation_layer.csv')
+    print(v_network.shape)
+
+    ### L6A: create Twitter layer ###
+    t_network['n1'] = twitter['node_1']
+    t_network['n2'] = twitter['node_2']
+    t_network['w'] = twitter['weight']
+    t_network['l'] = 6
+    t_network['date'] = twitter['date']
+    # change date format to match rest of the files
+    t_network['date'] = pd.to_datetime(t_network['date'].astype(str), format='%m/%d/%y')
+    t_network.to_csv(path_in + 'layers/twitter_layer.csv')
+    print(t_network.shape)
+
+    ### L6B: create Reddit layer ###
+    r_network['n1'] = reddit['node_1']
+    r_network['n2'] = reddit['node_2']
+    r_network['w'] = reddit['weight']
+    r_network['l'] = 6
+    r_network['date'] = reddit['date']
+    # change date format to match rest of the files
+    r_network['date'] = pd.to_datetime(r_network['date'].astype(str), format='%m/%d/%y')
+    r_network.to_csv(path_in + 'layers/reddit_layer.csv')
+    print(r_network.shape)
+
+    ### Create Twitter Multiplex Network ###
+    frames = [trans_network, p_network, w_network, l_network, v_network, t_network]
+    t_multiplex = pd.concat(frames)
+    t_multiplex.to_csv(path_in + 'layers/twitter_multiplex.csv')
+    print(t_multiplex.shape)
+
+    ### Create Reddit Multiplex Network ###
+    frames = [trans_network, p_network, w_network, l_network, v_network, r_network]
+    r_multiplex = pd.concat(frames)
+    r_multiplex.to_csv(path_in + 'layers/reddit_multiplex.csv')
+    print(r_multiplex.shape)
+
+if __name__ == '__main__':
+    main()
