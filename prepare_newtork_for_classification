@@ -1,0 +1,150 @@
+import pandas as pd
+import os
+import glob
+
+def merge_files(path_in):
+    # merge all weather files to one file and add county id
+    files_path = 'data/classification/weather/'
+    files_list = glob.glob(files_path + '*.{}'.format('csv'))
+    weather = pd.DataFrame()
+    for f in files_list:
+        wether_temp = pd.read_csv(f, sep=',')
+        weather = weather.append(wether_temp, ignore_index=True)
+    county_dict = pd.read_csv(path_in + 'classification/county_dict.csv', sep='\t', header=None)
+    # add county id to weather data and change index name to 'event_id'
+    county_dict = county_dict.rename(columns={0: 'county', 1: 'county_id'})
+    # w_classification = w_classification.drop(columns='Unnamed: 0')
+    weather = pd.merge(weather, county_dict, on ='county')
+    weather = weather.loc[:, ['county', 'county_id', 'lightning', 'PROP41', 'PROP42', 'PROP43',
+                              'tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean', 'relh.std',
+                              'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std', 'p01i.mean', 'p01i.std',
+                              'alti.mean', 'alti.std', 'gust.mean', 'gust.std', 'ice_accretion_6hr.mean',
+                              'ice_accretion_6hr.std', 'date', 'label']]
+    # fill nan values with 0
+    weather = weather.fillna(0)
+    # convert date format in weather classification
+    weather['date'] = pd.to_datetime(weather['date'].astype(str), format='%m/%d/%Y')
+    weather.to_csv(path_in + 'classification/weather_classification.csv', index_label='ID')
+
+def main ():
+    pd.set_option('display.max_column', None)
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_colwidth', None)
+    path_in = 'data/'
+
+    ### UNCOMMENT IF ANY CHANGE HAPPEN TO DATA ONLY###
+    merge_files(path_in)
+
+
+    # read original files
+    c_weather = pd.read_csv(path_in + 'classification/weather_classification.csv', sep=',')
+    n_trans = pd.read_csv(path_in + 'network/layers/transmission_layer.csv', sep=',')
+    n_power = pd.read_csv(path_in + 'network/layers/power_layer.csv', sep=',')
+    n_weather = pd.read_csv(path_in + 'network/layers/weather_layer.csv', sep=',')
+    n_lightning = pd.read_csv(path_in + 'network/layers/lightning_layer.csv', sep=',')
+    n_vegetatoion = pd.read_csv(path_in + 'network/layers/vegetation_layer.csv', sep=',')
+    n_twitter = pd.read_csv(path_in + 'network/layers/twitter_layer.csv', sep=',')
+    n_reddit = pd.read_csv(path_in + 'network/layers/reddit_layer.csv', sep=',')
+
+    # Dataset Stats
+    print('Number of examples for classification: ' + str(c_weather.shape))
+    print('Number of examples for label 0: ' + str(len(c_weather[(c_weather['label'] == 0)])))
+    print('Number of examples for  label 1: ' + str(len(c_weather[(c_weather['label'] == 1)])))
+
+    ###### CREATE TWITTER SUBNETWORKS ######
+    # 1. Create multiplex network; merge Twitter layers
+    # for each multiplex network create network with dates (1) and networks without dtes (2)
+    t_layers_1 = [n_power, n_weather, n_lightning, n_twitter]
+    t_layers_2 = [n_trans, n_vegetatoion]
+    t_multiplex_1 = pd.concat(t_layers_1)
+    t_multiplex_2 = pd.concat(t_layers_2)
+
+
+    # 2. duplicate the links because the network is undirected duplicate the adj-list and switch n1 with n2
+    t_multiplex_temp = t_multiplex_1.copy()
+    t_multiplex_temp['n1'] = t_multiplex_1['n2']
+    t_multiplex_temp['n2'] = t_multiplex_1['n1']
+    t_multiplex_1 = pd.concat([t_multiplex_1,t_multiplex_temp], ignore_index=True)
+
+    t_multiplex_temp = t_multiplex_2.copy()
+    t_multiplex_temp['n1'] = t_multiplex_2['n2']
+    t_multiplex_temp['n2'] = t_multiplex_2['n1']
+    t_multiplex_2 = pd.concat([t_multiplex_2, t_multiplex_temp], ignore_index=True)
+
+    # 3. drop all features from the weather dataset (keep ID, county_is, date, and label)
+    c_weather = c_weather.drop(['county', 'lightning', 'PROP41', 'PROP42', 'PROP43',
+                                'tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
+                                'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
+                                'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
+                                'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std'], axis=1)
+
+    # 4. create full network file
+    # merge t_multiplex_1 on date and county id
+    t_res_1 = t_multiplex_1.merge(c_weather, how='inner', left_on=['n1', 'date'],
+                               right_on=['county_id', 'date'])
+    # merge t_multiplex_2 on county id
+    t_res_2 = t_multiplex_2.merge(c_weather, how='inner', left_on=['n1'],
+                               right_on=['county_id'])
+    t_res = pd.concat([t_res_1, t_res_2])
+
+    # save full network file
+    t_res.to_csv(path_in + 'classification/network/twitter_full_join_inner.csv', index=False)
+
+    # 5. create sub-networks files for each example (for classification)
+    for i in t_res['ID'].unique():
+        t_df = t_res[t_res['ID'] == i]
+        # drop additional columns
+        t_df = t_df.drop(['Unnamed: 0', 'county_id', 'label'], axis=1)
+        t_df.to_csv(path_in + 'classification/network/twitter/{}.csv'.format(i), sep='\t', index=True)
+
+    print('Done with Twitter ...')
+
+    ###### CREATE REDDIT SUBNETWORKS ######
+    # 1. Create multiplex network; merge Twitter and Reddit layers
+    # for each multiplex network create network with dates (1) and networks without dtes (2)
+    r_layers_1 = [n_power, n_weather, n_lightning, n_reddit]
+    r_layers_2 = [n_trans, n_vegetatoion]
+    r_multiplex_1 = pd.concat(r_layers_1)
+    r_multiplex_2 = pd.concat(r_layers_2)
+
+    # 2. duplicate the links because the network is undirected duplicate the adj-list and switch n1 with n2
+    r_multiplex_temp = r_multiplex_1.copy()
+    r_multiplex_temp['n1'] = r_multiplex_1['n2']
+    r_multiplex_temp['n2'] = r_multiplex_1['n1']
+    r_multiplex_1 = pd.concat([r_multiplex_1,r_multiplex_temp], ignore_index=True)
+
+    r_multiplex_temp = r_multiplex_2.copy()
+    r_multiplex_temp['n1'] = r_multiplex_2['n2']
+    r_multiplex_temp['n2'] = r_multiplex_2['n1']
+    r_multiplex_2 = pd.concat([r_multiplex_2, r_multiplex_temp], ignore_index=True)
+
+    # # 3. drop all features from the weather dataset (keep ID, county_is, date, and label)
+    # c_weather = c_weather.drop(['county', 'lightning', 'PROP41', 'PROP42', 'PROP43',
+    #                             'tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
+    #                             'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
+    #                             'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
+    #                             'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std'], axis=1)
+
+    # 4. create full network file
+    # merge r_multiplex_1 on date and county id
+    r_res_1 = r_multiplex_1.merge(c_weather, how='inner', left_on=['n1', 'date'],
+                               right_on=['county_id', 'date'])
+    # merge r_multiplex_2 on county id
+    r_res_2 = r_multiplex_2.merge(c_weather, how='inner', left_on=['n1'],
+                               right_on=['county_id'])
+    r_res = pd.concat([r_res_1, r_res_2])
+    # save full network
+    r_res.to_csv(path_in + 'classification/network/reddit_full_join_inner.csv', index=False)
+
+    # 5. create seprate files for each example (for classification)
+    for i in r_res['ID'].unique():
+        r_df = r_res[r_res['ID'] == i]
+        # drop additional columns
+        r_df = r_df.drop(['Unnamed: 0', 'county_id', 'label'], axis=1)
+        r_df.to_csv(path_in + 'classification/network/reddit/{}.csv'.format(i), sep='\t', index=True)
+
+    print('Done with Reddit ...')
+
+
+if __name__ == '__main__':
+    main()
