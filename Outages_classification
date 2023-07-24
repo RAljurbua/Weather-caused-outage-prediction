@@ -1,0 +1,432 @@
+import glob
+import pandas as pd
+import random
+from random import shuffle
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.neural_network import MLPClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn import svm
+from sklearn import tree
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import MinMaxScaler
+import numpy as np
+from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline as imbpipeline
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+import matplotlib.pyplot as plt
+import os
+import chardet
+from tqdm import tqdm
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import plot_tree
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+import xgboost as xgb
+from xgboost import XGBClassifier
+from sklearn.tree import plot_tree
+import matplotlib.pyplot as plt
+tqdm.pandas(desc="progress-bar")
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from stellargraph.data import BiasedRandomWalk
+from stellargraph import StellarGraph
+from gensim.models import Word2Vec
+from imblearn.over_sampling import RandomOverSampler
+from sklearn.inspection import permutation_importance
+import warnings
+warnings.filterwarnings('ignore')
+# dataset information
+def info (df, out_file):
+    print('=============== Number of examples ===============', file=out_file)
+    print(' Dataset Info:', file=out_file)
+    print('  Number of label 0 examples = ' + str(df[df['label'] == 0].shape[0]), file=out_file)
+    print('  Percentage of label 0 examples = ' + str((df[df['label'] == 0].shape[0]/df.shape[0])*100), file=out_file)
+    print('  Number of label 1 examples = ' + str(df[df['label'] == 1].shape[0]), file=out_file)
+    print('  Percentage of label 1 examples = ' + str(((df[df['label'] == 1].shape[0]/df.shape[0])*100)), file=out_file)
+# Logistic Regression model with SMOTE for imbalance dataset
+def training_logistic_SMOTE(df, out_file, i):
+    
+    # shuffle data
+    df = df.sample(frac=1)
+   
+    X = df[['tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
+       'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
+       'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
+       'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std','lightning', 'PROP41', 'PROP42', 'PROP43',
+        'score', 'num_comments','num_crossposts', 'weather_x', 'rain_x', 'cold_x', 'wind_x', 'snow_x',
+        'storm_x', 'outage_x', 'blackout_x', 'power_x', 'user_verified',
+        'followersCount', 'friendsCount', 'replyCount', 'retweetCount', 'likes',
+        'quoteCount', 'weather_y', 'rain_y', 'cold_y', 'wind_y',
+        'snow_y', 'storm_y', 'outage_y', 'blackout_y', 'power_y']].copy()
+   
+    y = df['label'].copy()
+
+    # split training and testing and start training and prediction before oversampling
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.25,
+        stratify=y,
+        random_state=11
+    )
+
+    # Deal with imbalance using SMOTE
+    smote = SMOTE(random_state=11)
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+
+    pipeline = Pipeline(steps=[
+        ['scaler', MinMaxScaler()],
+        ['classifier', LogisticRegression(random_state=11,max_iter=1000)]
+    ])
+
+    stratified_kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=11)
+
+    param_grid = {'classifier__C': [100]}
+    grid_search = GridSearchCV(
+        estimator=pipeline,
+        param_grid=param_grid,
+        scoring='roc_auc',
+        cv=stratified_kfold,
+        n_jobs=-1
+    )
+
+    grid_search.fit(X_train, y_train)
+    y_pred = grid_search.predict(X_test)
+    cv_score = grid_search.best_score_
+    test_score = grid_search.score(X_test, y_test)
+    
+
+       
+    # Feature importance
+    coefs = grid_search.best_estimator_.named_steps['classifier'].coef_
+    feature_importance = {X.columns[i]: coef for i, coef in enumerate(coefs[0])}
+    
+    
+    display(feature_importance)
+
+
+
+    # save results to file
+    print('\n LR Testing Results ' + str(i) + ': ', file=out_file)
+    print('  Testing accuracy %s' % accuracy_score(y_test, y_pred), file=out_file)
+    print('  Testing F1 score: {}'.format(f1_score(y_test, y_pred, average='weighted')), file=out_file)
+    print(file=out_file)
+# NN model with SMOTE for imbalance dataset
+def training_NN_SMOTE (df, out_file, i):
+    
+    # shuffle data
+    df = df.sample(frac = 1)
+    
+    X = df[['tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
+       'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
+       'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
+       'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std','lightning', 'PROP41', 'PROP42', 'PROP43',
+        'score', 'num_comments','num_crossposts', 'weather_x', 'rain_x', 'cold_x', 'wind_x', 'snow_x',
+        'storm_x', 'outage_x', 'blackout_x', 'power_x', 'user_verified',
+        'followersCount', 'friendsCount', 'replyCount', 'retweetCount', 'likes',
+        'quoteCount', 'weather_y', 'rain_y', 'cold_y', 'wind_y',
+        'snow_y', 'storm_y', 'outage_y', 'blackout_y', 'power_y']].copy()
+
+    
+    
+    y = df['label'].copy()
+
+
+
+    # split training and testing and start training and prediction before oversampling
+    X_train, X_test, y_train, y_test = train_test_split(X,
+
+                                                        y,
+
+                                                        test_size=0.25,
+
+                                                        stratify=y,
+
+                                                        random_state=11)
+
+
+    # Deal with imbalance using SMOTE
+    smote = SMOTE(random_state=11)
+
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+
+
+
+    pipeline = Pipeline(steps = [['scaler', MinMaxScaler()],
+
+                                ['classifier', MLPClassifier(random_state=11,
+
+                                                                  max_iter=100)]])
+
+    stratified_kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=11)
+
+    
+    param_grid = {'classifier__hidden_layer_sizes':[50], 'classifier__activation':['relu'], 'classifier__solver':['lbfgs']}
+
+    grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, scoring='roc_auc',
+                               cv=stratified_kfold, n_jobs=-1)
+
+    grid_search.fit(X_train, y_train)
+    y_pred = grid_search.predict(X_test)
+    cv_score = grid_search.best_score_
+
+    test_score = grid_search.score(X_test, y_test)
+
+    # save results to file
+    print('\n NN Testing Results ' + str(i) + ': ', file=out_file)
+    print('  Testing accuracy %s' % accuracy_score(y_test, y_pred), file=out_file)
+    print('  Testing F1 score: {}'.format(f1_score(y_test, y_pred, average='weighted')), file=out_file)
+    print(file=out_file)
+# SVM model with SMOTE for imbalance dataset
+def training_SVM_SMOTE(df, out_file, i):
+
+    # shuffle data
+    df = df.sample(frac = 1)
+    
+    X = df[['tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
+       'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
+       'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
+       'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std','lightning', 'PROP41', 'PROP42', 'PROP43',
+        'score', 'num_comments','num_crossposts', 'weather_x', 'rain_x', 'cold_x', 'wind_x', 'snow_x',
+        'storm_x', 'outage_x', 'blackout_x', 'power_x', 'user_verified',
+        'followersCount', 'friendsCount', 'replyCount', 'retweetCount', 'likes',
+        'quoteCount', 'weather_y', 'rain_y', 'cold_y', 'wind_y',
+        'snow_y', 'storm_y', 'outage_y', 'blackout_y', 'power_y']].copy()
+
+
+    y = df['label'].copy()
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.25, stratify=y, random_state=11)
+
+    smote = SMOTE(random_state=11)
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+
+    pipeline = Pipeline(steps=[
+        ['scaler', MinMaxScaler()],
+        ['classifier', svm.SVC(random_state=11, max_iter=100)]
+    ])
+
+    stratified_kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=11)
+
+    param_grid = {'classifier__kernel': ['rbf'], 'classifier__C': [100], 'classifier__gamma': [1]}
+    grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, scoring='roc_auc',
+                               cv=stratified_kfold, n_jobs=-1)
+
+    grid_search.fit(X_train, y_train)
+    y_pred = grid_search.predict(X_test)
+    cv_score = grid_search.best_score_
+    test_score = grid_search.score(X_test, y_test)
+
+    # Get feature importance
+    feature_importance = permutation_importance(grid_search, X_test, y_test, n_jobs=-1)
+    display(feature_importance)
+    
+    # save results to file
+    print('\n SVM Testing Results ' + str(i) + ': ', file=out_file)
+    print('  Testing accuracy %s' % accuracy_score(y_test, y_pred), file=out_file)
+    print('  Testing F1 score: {}'.format(f1_score(y_test, y_pred, average='weighted')), file=out_file)
+    print(file=out_file)
+# DT model with SMOTE for imbalance dataset
+def training_DT_SMOTE(df, out_file, i):
+   
+    # shuffle data
+    df = df.sample(frac = 1)
+    
+    X = df[['tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
+       'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
+       'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
+       'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std','lightning', 'PROP41', 'PROP42', 'PROP43',
+        'score', 'num_comments','num_crossposts', 'weather_x', 'rain_x', 'cold_x', 'wind_x', 'snow_x',
+        'storm_x', 'outage_x', 'blackout_x', 'power_x', 'user_verified',
+        'followersCount', 'friendsCount', 'replyCount', 'retweetCount', 'likes',
+        'quoteCount', 'weather_y', 'rain_y', 'cold_y', 'wind_y',
+        'snow_y', 'storm_y', 'outage_y', 'blackout_y', 'power_y']].copy()
+    
+    y = df['label'].copy()
+
+    # split training and testing data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25,
+                                                        stratify=y, random_state=11)
+   
+    # Use SMOTE to deal with class imbalance
+    smote = SMOTE(random_state=11)
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+
+    # Build decision tree classifier
+    dt = DecisionTreeClassifier(random_state=11, max_depth=10)
+    dt.fit(X_train, y_train)
+
+    # Feature importance
+    feat_imp = pd.DataFrame({'Feature': X.columns, 'Importance': dt.feature_importances_})
+    feat_imp = feat_imp.sort_values('Importance', ascending=False).reset_index(drop=True)
+    display(feat_imp)
+    
+
+    
+    # save results to file
+    print('\n DT Testing Results ' + str(i) + ': ', file=out_file)
+    print('  Testing accuracy %s' % accuracy_score(y_test, y_pred), file=out_file)
+    print('  Testing F1 score: {}'.format(f1_score(y_test, y_pred, average='weighted')), file=out_file)
+    print(file=out_file)
+# XGB model with SMOTE for imbalance dataset
+def training_XGB_SMOTE(df, out_file, i):
+   
+    # shuffle data
+    df = df.sample(frac = 1)
+    
+    X = df[['tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
+       'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
+       'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
+       'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std','lightning', 'PROP41', 'PROP42', 'PROP43',
+        'score', 'num_comments','num_crossposts', 'weather_x', 'rain_x', 'cold_x', 'wind_x', 'snow_x',
+        'storm_x', 'outage_x', 'blackout_x', 'power_x', 'user_verified',
+        'followersCount', 'friendsCount', 'replyCount', 'retweetCount', 'likes',
+        'quoteCount', 'weather_y', 'rain_y', 'cold_y', 'wind_y',
+        'snow_y', 'storm_y', 'outage_y', 'blackout_y', 'power_y']].copy()
+    
+    
+    y = df['label'].copy()
+
+    # split training and testing data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25,
+                                                        stratify=y, random_state=11)
+   
+    # Use SMOTE to deal with class imbalance
+    smote = SMOTE(random_state=11)
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+    
+
+    # Build XGBoost classifier
+    xgb_clf = XGBClassifier(random_state=11, max_depth=10)
+    xgb_clf.fit(X_train, y_train)
+
+    # Feature importance
+    feat_imp = pd.DataFrame({'Feature': X.columns, 'Importance': xgb_clf.feature_importances_})
+    feat_imp = feat_imp.sort_values('Importance', ascending=False).reset_index(drop=True)
+    display(feat_imp)
+    
+
+    
+    # save results to file
+    print('\n XGB Testing Results ' + str(i) + ': ', file=out_file)
+    print('  Testing accuracy %s' % accuracy_score(y_test, y_pred), file=out_file)
+    print('  Testing F1 score: {}'.format(f1_score(y_test, y_pred, average='weighted')), file=out_file)
+    print(file=out_file)
+# RF model with SMOTE for imbalance dataset
+def training_RF_SMOTE(df, out_file, i):
+   
+    # shuffle data
+    df = df.sample(frac = 1)
+    
+    X = df[['tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
+       'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
+       'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
+       'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std','lightning', 'PROP41', 'PROP42', 'PROP43',
+        'score', 'num_comments','num_crossposts', 'weather_x', 'rain_x', 'cold_x', 'wind_x', 'snow_x',
+        'storm_x', 'outage_x', 'blackout_x', 'power_x', 'user_verified',
+        'followersCount', 'friendsCount', 'replyCount', 'retweetCount', 'likes',
+        'quoteCount', 'weather_y', 'rain_y', 'cold_y', 'wind_y',
+        'snow_y', 'storm_y', 'outage_y', 'blackout_y', 'power_y']].copy()
+    
+    y = df['label'].copy()
+
+
+    # split training and testing data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25,
+                                                        stratify=y, random_state=11)
+   
+    # Use SMOTE to deal with class imbalance
+    smote = SMOTE(random_state=11)
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+
+    # Build random forest classifier
+    rf = RandomForestClassifier(random_state=11, max_depth=10)
+    rf.fit(X_train, y_train)
+
+    # Feature importance
+    feat_imp = pd.DataFrame({'Feature': X.columns, 'Importance': rf.feature_importances_})
+    feat_imp = feat_imp.sort_values('Importance', ascending=False).reset_index(drop=True)
+    display(feat_imp)
+
+   
+    
+    # save results to file
+    print('\n RF Testing Results ' + str(i) + ': ', file=out_file)
+    print('  Testing accuracy %s' % accuracy_score(y_test, y_pred), file=out_file)
+    print('  Testing F1 score: {}'.format(f1_score(y_test, y_pred, average='weighted')), file=out_file)
+    print(file=out_file)
+def main ():
+    pd.set_option('display.max_column', None)
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_colwidth', None)
+    
+
+    #read data
+    files = os.path.join('./3 Hours classification/Classification/Weather/*.csv')
+    files = glob.glob(files)
+    df = pd.concat(map(pd.read_csv, files), ignore_index=True)
+    #df= pd.read_csv('merge_W_T_R.csv')
+    
+    # replace NaN values with 0
+    df = df.fillna(0)
+    
+    out_file = open('./3 Hours classification/Classification/results/weather_results.txt', 'w')
+    info (df, out_file)
+    
+    
+    # LR with SMOTE
+    print(file=out_file)
+    print('=============== LR WITH SMOTE ===============', file=out_file)
+    for i in range(10):
+        training_logistic_SMOTE(df, out_file, i)
+    print('Done training logistic regression with SMOTE...')
+        
+
+    # NN with SMOTE
+    print(file=out_file)
+    print('=============== NN WITH SMOTE ===============', file=out_file)
+    for i in range(10):
+        training_NN_SMOTE(df, out_file, i)
+    print('Done training NN with SMOTE...')
+        
+    # SVM with SMOTE
+    print(file=out_file)
+    print('=============== SVM WITH SMOTE ===============', file=out_file)
+    for i in range(10):
+        training_SVM_SMOTE(df, out_file, i)
+    print('Done training SVM with SMOTE...')
+        
+    # DT with SMOTE
+    print(file=out_file)
+    print('=============== DT WITH SMOTE ===============', file=out_file)
+    for i in range(10):
+        training_DT_SMOTE(df, out_file, i)
+    print('Done training DT with SMOTE...')
+        
+    # XGB with SMOTE
+    print(file=out_file)
+    print('=============== XGB WITH SMOTE ===============', file=out_file)
+    for i in range(10):
+        training_XGB_SMOTE(df, out_file, i)
+    print('Done training XGB with SMOTE...')
+        
+    # RF with SMOTE
+    print(file=out_file)
+    print('=============== RF WITH SMOTE ===============', file=out_file)
+    for i in range(10):
+        training_RF_SMOTE(df, out_file, i)
+    print('Done training RF with SMOTE...')
+        
+
+
+
+
+if __name__ == '__main__':
+    main()
