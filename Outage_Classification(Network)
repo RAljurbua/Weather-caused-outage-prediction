@@ -1,0 +1,426 @@
+import glob
+import pandas as pd
+import random
+from random import shuffle
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.neural_network import MLPClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn import svm
+from sklearn import tree
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import MinMaxScaler
+import numpy as np
+from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline as imbpipeline
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+import matplotlib.pyplot as plt
+import os
+import chardet
+from tqdm import tqdm
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import plot_tree
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+import xgboost as xgb
+from xgboost import XGBClassifier
+from sklearn.tree import plot_tree
+import matplotlib.pyplot as plt
+tqdm.pandas(desc="progress-bar")
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from stellargraph.data import BiasedRandomWalk
+from stellargraph import StellarGraph
+from gensim.models import Word2Vec
+from imblearn.over_sampling import RandomOverSampler
+from sklearn.inspection import permutation_importance
+import warnings
+warnings.filterwarnings('ignore')
+# dataset information
+def info (df, out_file):
+    print('=============== Number of examples ===============', file=out_file)
+    print(' Dataset Info:', file=out_file)
+    print('  Number of label 0 examples = ' + str(df[df['label'] == 0].shape[0]), file=out_file)
+    print('  Percentage of label 0 examples = ' + str((df[df['label'] == 0].shape[0]/df.shape[0])*100), file=out_file)
+    print('  Number of label 1 examples = ' + str(df[df['label'] == 1].shape[0]), file=out_file)
+    print('  Percentage of label 1 examples = ' + str(((df[df['label'] == 1].shape[0]/df.shape[0])*100)), file=out_file)
+def graph_emb(df):
+    df = df.rename(columns={'n1': 'source', 'n2': 'target',
+                            'w': 'weight', 'l': 'layer'})
+    columns = ['source', 'target', 'weight']
+    graph = df[columns].copy()
+    # label = df['label'][0].astype(int)
+    g = StellarGraph(edges=graph, is_directed=False)
+    # Random Walks
+    rw = BiasedRandomWalk(g)
+    walks = rw.run(nodes=list(g.nodes()), length=100, n=10,  p=0.5, q=2.0)
+
+    str_walks = [[str(n) for n in walk] for walk in walks]
+    model = Word2Vec(str_walks, window=5, min_count=0, sg=1, vector_size=100)
+    # Retrieve node embeddings and corresponding subjects
+    node_ids = model.wv.index_to_key  # list of node IDs
+    node_embeddings = (model.wv.vectors)
+
+    # Method 4: max embeddings
+    if (node_embeddings.shape[0] > 1):
+        node_embeddings = np.mean(node_embeddings, axis=0)
+    return node_embeddings
+# Logistic Regression model with SMOTE for imbalance dataset
+def training_logistic_SMOTE (weather, network_emb, out_file, i):
+    #get target features ana labels
+    feature = weather.drop(['ID', 'county', 'county_id', 'date', 'label'], axis=1)
+    label = weather[['label']].copy()
+    vector = np.concatenate((feature, network_emb, label), axis=1)
+
+    # shuffle data
+    np.random.shuffle(vector)
+
+    # separate features from label
+    label = vector[:, [-1]]
+    vector = np.delete(vector, -1, axis=1)
+    
+
+    # split training and testing and start training and prediction before oversampling
+    X_train, X_test, y_train, y_test = train_test_split(vector, label, test_size=0.25, stratify=label, random_state=11)
+
+    # Deal with imbalance using SMOTE
+    smote = SMOTE(random_state=11)
+
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+
+
+
+    pipeline = Pipeline(steps=[['scaler', MinMaxScaler()],
+                               ['classifier', LogisticRegression(random_state=11,max_iter=1000)]])
+
+    stratified_kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=11)
+
+    param_grid = {'classifier__C': [100]}
+
+    grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, scoring='roc_auc',
+                               cv=stratified_kfold, n_jobs=-1)
+
+    grid_search.fit(X_train, y_train)
+    y_pred = grid_search.predict(X_test)
+    cv_score = grid_search.best_score_
+
+    test_score = grid_search.score(X_test, y_test)
+
+    # save results to file
+    print('\n LR Testing Results ' + str(i) + ': ', file=out_file)
+    print('  Testing accuracy %s' % accuracy_score(y_test, y_pred), file=out_file)
+    print('  Testing F1 score: {}'.format(f1_score(y_test, y_pred, average='weighted')), file=out_file)
+    print(file=out_file)
+# NN model with SMOTE for imbalance dataset
+def training_NN_SMOTE (weather, network_emb, out_file, i):
+    #get target features ana labels
+    feature = weather.drop(['ID', 'county', 'county_id', 'date', 'label'], axis=1)
+    label = weather[['label']].copy()
+    vector = np.concatenate((feature, network_emb, label), axis=1)
+
+    # shuffle data
+    np.random.shuffle(vector)
+
+    # separate features from label
+    label = vector[:, [-1]]
+    vector = np.delete(vector, -1, axis=1)
+
+    # split training and testing and start training and prediction before oversampling
+    X_train, X_test, y_train, y_test = train_test_split(vector, label, test_size=0.25, stratify=label, random_state=11)
+
+    # Deal with imbalance using SMOTE
+    smote = SMOTE(random_state=11)
+
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+
+
+
+    pipeline = Pipeline(steps = [['scaler', MinMaxScaler()],
+
+                                ['classifier', MLPClassifier(random_state=11,
+
+                                                                  max_iter=100)]])
+
+    stratified_kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=11)
+
+    
+    param_grid = {'classifier__hidden_layer_sizes':[50], 'classifier__activation':['relu'], 'classifier__solver':['lbfgs']}
+
+    grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, scoring='roc_auc',
+                               cv=stratified_kfold, n_jobs=-1)
+
+    grid_search.fit(X_train, y_train)
+    y_pred = grid_search.predict(X_test)
+    cv_score = grid_search.best_score_
+
+    test_score = grid_search.score(X_test, y_test)
+
+    # save results to file
+    print('\n NN Testing Results ' + str(i) + ': ', file=out_file)
+    print('  Testing accuracy %s' % accuracy_score(y_test, y_pred), file=out_file)
+    print('  Testing F1 score: {}'.format(f1_score(y_test, y_pred, average='weighted')), file=out_file)
+    print(file=out_file)
+# SVM model with SMOTE for imbalance dataset
+def training_SVM_SMOTE (weather, network_emb, out_file, i):
+    #get target features ana labels
+    feature = weather.drop(['ID', 'county', 'county_id', 'date', 'label'], axis=1)
+    label = weather[['label']].copy()
+    vector = np.concatenate((feature, network_emb, label), axis=1)
+
+    # shuffle data
+    np.random.shuffle(vector)
+
+    # separate features from label
+    label = vector[:, [-1]]
+    vector = np.delete(vector, -1, axis=1)
+
+    # split training and testing and start training and prediction before oversampling
+    X_train, X_test, y_train, y_test = train_test_split(vector, label, test_size=0.25, stratify=label, random_state=11)
+
+    # Deal with imbalance using SMOTE
+    smote = SMOTE(random_state=11)
+
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+
+
+    pipeline = Pipeline(steps = [['scaler', MinMaxScaler()],
+
+                                ['classifier', svm.SVC(random_state=11,
+
+                                                                  max_iter=100)]])
+
+    stratified_kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=11)
+
+    param_grid = {'classifier__kernel': ['rbf'],'classifier__C':[100], 'classifier__gamma':[1]}
+    grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, scoring='roc_auc',
+                               cv=stratified_kfold, n_jobs=-1)
+
+    grid_search.fit(X_train, y_train)
+    y_pred = grid_search.predict(X_test)
+    cv_score = grid_search.best_score_
+
+    test_score = grid_search.score(X_test, y_test)
+
+    # save results to file
+    print('\n SVM Testing Results ' + str(i) + ': ', file=out_file)
+    print('  Testing accuracy %s' % accuracy_score(y_test, y_pred), file=out_file)
+    print('  Testing F1 score: {}'.format(f1_score(y_test, y_pred, average='weighted')), file=out_file)
+    print(file=out_file)
+# DT model with SMOTE for imbalance dataset
+def training_DT_SMOTE (weather, network_emb, out_file, i):
+    #get target features ana labels
+    feature = weather.drop(['ID', 'county', 'county_id', 'date', 'label'], axis=1)
+    label = weather[['label']].copy()
+    vector = np.concatenate((feature, network_emb, label), axis=1)
+
+    # shuffle data
+    np.random.shuffle(vector)
+
+    # separate features from label
+    label = vector[:, [-1]]
+    vector = np.delete(vector, -1, axis=1)
+
+    # split training and testing and start training and prediction before oversampling
+    X_train, X_test, y_train, y_test = train_test_split(vector, label, test_size=0.25, stratify=label, random_state=11)
+
+    # Deal with imbalance using SMOTE
+    smote = SMOTE(random_state=11)
+
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+
+
+    
+    pipeline = Pipeline(steps = [['scaler', MinMaxScaler()],
+
+                                ['classifier', tree.DecisionTreeClassifier(random_state=11)]])
+
+
+    stratified_kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=11)
+
+    param_grid = {'classifier__max_depth': [10]}     
+    grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, scoring='roc_auc',
+                               cv=stratified_kfold, n_jobs=-1)
+
+    grid_search.fit(X_train, y_train)
+    y_pred = grid_search.predict(X_test)
+    cv_score = grid_search.best_score_
+
+    test_score = grid_search.score(X_test, y_test)
+
+    # save results to file
+    print('\n DT Testing Results ' + str(i) + ': ', file=out_file)
+    print('  Testing accuracy %s' % accuracy_score(y_test, y_pred), file=out_file)
+    print('  Testing F1 score: {}'.format(f1_score(y_test, y_pred, average='weighted')), file=out_file)
+    print(file=out_file)
+# XGB model with SMOTE for imbalance dataset
+def training_XGBoost_SMOTE(weather, network_emb, out_file, i):
+    #get target features ana labels
+    feature = weather.drop(['ID', 'county', 'county_id', 'date', 'label'], axis=1)
+    label = weather[['label']].copy()
+    vector = np.concatenate((feature, network_emb, label), axis=1)
+
+    # shuffle data
+    np.random.shuffle(vector)
+
+    # separate features from label
+    label = vector[:, [-1]]
+    vector = np.delete(vector, -1, axis=1)
+
+    # split training and testing and start training and prediction before oversampling
+    X_train, X_test, y_train, y_test = train_test_split(vector, label, test_size=0.25, stratify=label, random_state=11)
+
+    # Deal with imbalance using SMOTE
+    smote = SMOTE(random_state=11)
+    
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+
+    pipeline = Pipeline(steps=[
+        ['scaler', MinMaxScaler()],
+        
+        ['classifier', xgb.XGBClassifier(random_state=11)]
+    ])
+
+    stratified_kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=11)
+
+    param_grid = {'classifier__max_depth': [10]}
+
+    grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, scoring='roc_auc',
+                               cv=stratified_kfold, n_jobs=-1)
+
+    grid_search.fit(X_train, y_train)
+    y_pred = grid_search.predict(X_test)
+    cv_score = grid_search.best_score_
+
+    test_score = grid_search.score(X_test, y_test)
+
+    # save results to file
+    print('\n XGBoost Testing Results ' + str(i) + ': ', file=out_file)
+    print('  Testing accuracy %s' % accuracy_score(y_test, y_pred), file=out_file)
+    print('  Testing F1 score: {}'.format(f1_score(y_test, y_pred, average='weighted')), file=out_file)
+    print(file=out_file)
+# RF model with SMOTE for imbalance dataset
+def training_RF_SMOTE(weather, network_emb, out_file, i):
+    #get target features ana labels
+    feature = weather.drop(['ID', 'county', 'county_id', 'date', 'label'], axis=1)
+    label = weather[['label']].copy()
+    vector = np.concatenate((feature, network_emb, label), axis=1)
+
+    # shuffle data
+    np.random.shuffle(vector)
+
+    # separate features from label
+    label = vector[:, [-1]]
+    vector = np.delete(vector, -1, axis=1)
+
+    # split training and testing and start training and prediction before oversampling
+    X_train, X_test, y_train, y_test = train_test_split(vector, label, test_size=0.25, stratify=label, random_state=11)
+
+    # Deal with imbalance using SMOTE
+    smote = SMOTE(random_state=11)
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+
+    pipeline = Pipeline(steps=[
+        ['scaler', MinMaxScaler()],
+        
+        ['classifier', RandomForestClassifier(random_state=11)]
+    ])
+
+    stratified_kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=11)
+
+    param_grid = {'classifier__max_depth': [10]}
+
+    grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, scoring='roc_auc',
+                               cv=stratified_kfold, n_jobs=-1)
+
+    grid_search.fit(X_train, y_train)
+    y_pred = grid_search.predict(X_test)
+    cv_score = grid_search.best_score_
+
+    test_score = grid_search.score(X_test, y_test)
+
+    # save results to file
+    print('\n Random Forest Testing Results ' + str(i) + ': ', file=out_file)
+    print('  Testing accuracy %s' % accuracy_score(y_test, y_pred), file=out_file)
+    print('  Testing F1 score: {}'.format(f1_score(y_test, y_pred, average='weighted')), file=out_file)
+    print(file=out_file)
+def main ():
+    pd.set_option('display.max_column', None)
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_colwidth', None)
+    root = 'data/'
+
+    #read weather file
+    weather = pd.read_csv(root + 'weather_classification.csv') 
+    
+
+
+    networks = ['twitter', 'reddit']
+    for n in networks:
+        network_path = root + 'network/' + n + '/'
+        out_file = open(root + 'results/' + n + '_network_resultse.txt', 'w')
+        print('=============== ORIGINAL DATA STATS ===============', file=out_file)
+        info(weather, out_file)
+
+        # get network representation
+        files = os.listdir(network_path)
+        network_emb = []
+        for f in files:
+            df = pd.read_csv(network_path + f, sep='\t', header=0, low_memory=False)
+            # drop additional columns
+            df = df.drop(['ID', 'date', 'Unnamed: 0'], axis = 1)
+            emb = graph_emb(df)
+            network_emb.append(emb)
+        print('Done creating network embeddings...')
+
+        # LR with SMOTE
+        print(file=out_file)
+        print('=============== LR WITH SMOTE ===============', file=out_file)
+        for i in range(10):
+            training_logistic_SMOTE(weather, network_emb, out_file, i)
+        print('Done training logistic regression with SMOTE...')
+        
+
+        # NN with SMOTE
+        print(file=out_file)
+        print('=============== NN WITH SMOTE ===============', file=out_file)
+        for i in range(10):
+            training_NN_SMOTE(weather, network_emb, out_file, i)
+        print('Done training NN with SMOTE...')
+        
+        # SVM with SMOTE
+        print(file=out_file)
+        print('=============== SVM WITH SMOTE ===============', file=out_file)
+        for i in range(10):
+            training_SVM_SMOTE(weather, network_emb, out_file, i)
+        print('Done training SVM with SMOTE...')
+        
+        # DT with SMOTE
+        print(file=out_file)
+        print('=============== DT WITH SMOTE ===============', file=out_file)
+        for i in range(10):
+            training_DT_SMOTE(weather, network_emb, out_file, i)
+        print('Done training DT with SMOTE...')
+        
+        # XGB with SMOTE
+        print(file=out_file)
+        print('=============== XGB WITH SMOTE ===============', file=out_file)
+        for i in range(10):
+            training_XGB_SMOTE(weather, network_emb, out_file, i)
+        print('Done training XGB with SMOTE...')
+        
+        # RF with SMOTE
+        print(file=out_file)
+        print('=============== RF WITH SMOTE ===============', file=out_file)
+        for i in range(10):
+            training_RF_SMOTE(weather, network_emb, out_file, i)
+        print('Done training RF with SMOTE...')
+        
+
+
+if __name__ == '__main__':
+    main()
