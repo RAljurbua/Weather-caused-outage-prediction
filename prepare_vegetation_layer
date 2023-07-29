@@ -17,7 +17,7 @@ def main ():
     vegetation = vegetation.fillna(0)
     pairwise = pd.DataFrame(squareform(pdist(vegetation)), columns=vegetation.index, index=vegetation.index)
 
-    # # create dataframe to save results
+    # # Create dataframe to save results
     veg_dis = pd.DataFrame(columns=['county1', 'county2', 'distance'])
 
     for r in pairwise.index:
