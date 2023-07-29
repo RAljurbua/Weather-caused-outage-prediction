@@ -95,7 +95,7 @@ print('Total number of unique nodes: ' + str(len(node_uni)))
 
 
 
-# degree centrality
+# Degree centrality
 centralities = r_multiplex.monoplex_nx_wrapper("degree_centrality")
 
 # Average degree cenrality
