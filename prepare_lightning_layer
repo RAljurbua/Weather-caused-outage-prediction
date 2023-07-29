@@ -13,7 +13,7 @@ def main ():
     #convert date format
     lightning['#ZDAY'] = pd.to_datetime(lightning['#ZDAY'].astype(str), format='%Y%m%d')
 
-    # create network
+    # Create network
     light_network = pd.DataFrame(columns=['node_1', 'node_2', 'date', 'weight'])
 
     # if a lightning strike occure in two counties at the date create link between nodes and save weight
