@@ -18,7 +18,7 @@ def main ():
     trans_merge = trans_merge.set_index('county')
     trans_merge.columns = [str(col) + '_line' for col in trans_merge.columns]
 
-    # create network
+    # Create network
     trans_network = pd.DataFrame(columns=['node_1', 'node_2', 'weight'])
 
     for c1 in trans_merge.index:
