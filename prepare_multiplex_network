@@ -34,7 +34,7 @@ def main ():
     trans_network.to_csv(path_in + 'layers/transmission_layer.csv')
     print(trans_network.shape)
 
-    ### L2: create power layer ###
+    ### L2: Create power layer ###
     p_network['n1'] = power['node_1']
     p_network['n2'] = power['node_2']
     p_network['w'] = 1
