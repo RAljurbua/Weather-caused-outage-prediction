@@ -55,15 +55,7 @@ def training_logistic_SMOTE(df, out_file, i):
     # shuffle data
     df = df.sample(frac=1)
    
-    X = df[['tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
-       'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
-       'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
-       'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std','lightning', 'PROP41', 'PROP42', 'PROP43',
-        'score', 'num_comments','num_crossposts', 'weather_x', 'rain_x', 'cold_x', 'wind_x', 'snow_x',
-        'storm_x', 'outage_x', 'blackout_x', 'power_x', 'user_verified',
-        'followersCount', 'friendsCount', 'replyCount', 'retweetCount', 'likes',
-        'quoteCount', 'weather_y', 'rain_y', 'cold_y', 'wind_y',
-        'snow_y', 'storm_y', 'outage_y', 'blackout_y', 'power_y']].copy()
+    X = df[['', '' ]].copy() #features
    
     y = df['label'].copy()
 
@@ -122,19 +114,8 @@ def training_NN_SMOTE (df, out_file, i):
     
     # shuffle data
     df = df.sample(frac = 1)
-    
-    X = df[['tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
-       'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
-       'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
-       'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std','lightning', 'PROP41', 'PROP42', 'PROP43',
-        'score', 'num_comments','num_crossposts', 'weather_x', 'rain_x', 'cold_x', 'wind_x', 'snow_x',
-        'storm_x', 'outage_x', 'blackout_x', 'power_x', 'user_verified',
-        'followersCount', 'friendsCount', 'replyCount', 'retweetCount', 'likes',
-        'quoteCount', 'weather_y', 'rain_y', 'cold_y', 'wind_y',
-        'snow_y', 'storm_y', 'outage_y', 'blackout_y', 'power_y']].copy()
 
-    
-    
+    X = df[['', '' ]].copy() #features
     y = df['label'].copy()
 
 
@@ -189,16 +170,7 @@ def training_SVM_SMOTE(df, out_file, i):
     # shuffle data
     df = df.sample(frac = 1)
     
-    X = df[['tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
-       'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
-       'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
-       'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std','lightning', 'PROP41', 'PROP42', 'PROP43',
-        'score', 'num_comments','num_crossposts', 'weather_x', 'rain_x', 'cold_x', 'wind_x', 'snow_x',
-        'storm_x', 'outage_x', 'blackout_x', 'power_x', 'user_verified',
-        'followersCount', 'friendsCount', 'replyCount', 'retweetCount', 'likes',
-        'quoteCount', 'weather_y', 'rain_y', 'cold_y', 'wind_y',
-        'snow_y', 'storm_y', 'outage_y', 'blackout_y', 'power_y']].copy()
-
+    X = df[['', '' ]].copy() #features
 
     y = df['label'].copy()
 
@@ -239,15 +211,7 @@ def training_DT_SMOTE(df, out_file, i):
     # shuffle data
     df = df.sample(frac = 1)
     
-    X = df[['tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
-       'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
-       'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
-       'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std','lightning', 'PROP41', 'PROP42', 'PROP43',
-        'score', 'num_comments','num_crossposts', 'weather_x', 'rain_x', 'cold_x', 'wind_x', 'snow_x',
-        'storm_x', 'outage_x', 'blackout_x', 'power_x', 'user_verified',
-        'followersCount', 'friendsCount', 'replyCount', 'retweetCount', 'likes',
-        'quoteCount', 'weather_y', 'rain_y', 'cold_y', 'wind_y',
-        'snow_y', 'storm_y', 'outage_y', 'blackout_y', 'power_y']].copy()
+    X = df[['', '' ]].copy() #features
     
     y = df['label'].copy()
 
@@ -262,6 +226,7 @@ def training_DT_SMOTE(df, out_file, i):
     # Build decision tree classifier
     dt = DecisionTreeClassifier(random_state=11, max_depth=10)
     dt.fit(X_train, y_train)
+    y_pred = dt.predict(X_test)
 
     # Feature importance
     feat_imp = pd.DataFrame({'Feature': X.columns, 'Importance': dt.feature_importances_})
@@ -281,15 +246,7 @@ def training_XGB_SMOTE(df, out_file, i):
     # shuffle data
     df = df.sample(frac = 1)
     
-    X = df[['tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
-       'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
-       'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
-       'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std','lightning', 'PROP41', 'PROP42', 'PROP43',
-        'score', 'num_comments','num_crossposts', 'weather_x', 'rain_x', 'cold_x', 'wind_x', 'snow_x',
-        'storm_x', 'outage_x', 'blackout_x', 'power_x', 'user_verified',
-        'followersCount', 'friendsCount', 'replyCount', 'retweetCount', 'likes',
-        'quoteCount', 'weather_y', 'rain_y', 'cold_y', 'wind_y',
-        'snow_y', 'storm_y', 'outage_y', 'blackout_y', 'power_y']].copy()
+    X = df[['', '' ]].copy() #features
     
     
     y = df['label'].copy()
@@ -306,6 +263,7 @@ def training_XGB_SMOTE(df, out_file, i):
     # Build XGBoost classifier
     xgb_clf = XGBClassifier(random_state=11, max_depth=10)
     xgb_clf.fit(X_train, y_train)
+    y_pred = xgb_clf.predict(X_test)
 
     # Feature importance
     feat_imp = pd.DataFrame({'Feature': X.columns, 'Importance': xgb_clf.feature_importances_})
@@ -325,15 +283,7 @@ def training_RF_SMOTE(df, out_file, i):
     # shuffle data
     df = df.sample(frac = 1)
     
-    X = df[['tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
-       'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
-       'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
-       'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std','lightning', 'PROP41', 'PROP42', 'PROP43',
-        'score', 'num_comments','num_crossposts', 'weather_x', 'rain_x', 'cold_x', 'wind_x', 'snow_x',
-        'storm_x', 'outage_x', 'blackout_x', 'power_x', 'user_verified',
-        'followersCount', 'friendsCount', 'replyCount', 'retweetCount', 'likes',
-        'quoteCount', 'weather_y', 'rain_y', 'cold_y', 'wind_y',
-        'snow_y', 'storm_y', 'outage_y', 'blackout_y', 'power_y']].copy()
+    X = df[['', '' ]].copy() #features
     
     y = df['label'].copy()
 
@@ -349,6 +299,7 @@ def training_RF_SMOTE(df, out_file, i):
     # Build random forest classifier
     rf = RandomForestClassifier(random_state=11, max_depth=10)
     rf.fit(X_train, y_train)
+    y_pred = rf.predict(X_test)
 
     # Feature importance
     feat_imp = pd.DataFrame({'Feature': X.columns, 'Importance': rf.feature_importances_})
@@ -369,15 +320,15 @@ def main ():
     
 
     #read data
-    files = os.path.join('./3 Hours classification/Classification/Weather/*.csv')
+    files = os.path.join('.///*.csv')
     files = glob.glob(files)
     df = pd.concat(map(pd.read_csv, files), ignore_index=True)
-    #df= pd.read_csv('merge_W_T_R.csv')
+    
     
     # replace NaN values with 0
     df = df.fillna(0)
     
-    out_file = open('./3 Hours classification/Classification/results/weather_results.txt', 'w')
+    out_file = open('.', 'w')
     info (df, out_file)
     
     
@@ -430,3 +381,4 @@ def main ():
 
 if __name__ == '__main__':
     main()
+ 
