@@ -15,11 +15,7 @@ def merge_files(path_in):
     county_dict = county_dict.rename(columns={0: 'county', 1: 'county_id'})
     # w_classification = w_classification.drop(columns='Unnamed: 0')
     weather = pd.merge(weather, county_dict, on ='county')
-    weather = weather.loc[:, ['county', 'county_id', 'lightning', 'PROP41', 'PROP42', 'PROP43',
-                              'tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean', 'relh.std',
-                              'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std', 'p01i.mean', 'p01i.std',
-                              'alti.mean', 'alti.std', 'gust.mean', 'gust.std', 'ice_accretion_6hr.mean',
-                              'ice_accretion_6hr.std', 'date', 'label']]
+    weather = weather.loc[:, ['', '']]
     # fill nan values with 0
     weather = weather.fillna(0)
     # convert date format in weather classification
@@ -72,13 +68,9 @@ def main ():
     t_multiplex_2 = pd.concat([t_multiplex_2, t_multiplex_temp], ignore_index=True)
 
     # 3. drop all features from the weather dataset (keep ID, county_is, date, and label)
-    c_weather = c_weather.drop(['county', 'lightning', 'PROP41', 'PROP42', 'PROP43',
-                                'tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
-                                'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
-                                'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
-                                'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std'], axis=1)
+    c_weather = c_weather.drop(['', ''], axis=1)
 
-    # 4. create full network file
+    # 4. Create full network file
     # merge t_multiplex_1 on date and county id
     t_res_1 = t_multiplex_1.merge(c_weather, how='inner', left_on=['n1', 'date'],
                                right_on=['county_id', 'date'])
@@ -119,11 +111,7 @@ def main ():
     r_multiplex_2 = pd.concat([r_multiplex_2, r_multiplex_temp], ignore_index=True)
 
     # # 3. drop all features from the weather dataset (keep ID, county_is, date, and label)
-    # c_weather = c_weather.drop(['county', 'lightning', 'PROP41', 'PROP42', 'PROP43',
-    #                             'tmpf.mean', 'tmpf.std', 'dwpf.mean', 'dwpf.std', 'relh.mean',
-    #                             'relh.std', 'drct.mean', 'drct.std', 'sknt.mean', 'sknt.std',
-    #                             'p01i.mean', 'p01i.std', 'alti.mean', 'alti.std', 'gust.mean',
-    #                             'gust.std', 'ice_accretion_6hr.mean', 'ice_accretion_6hr.std'], axis=1)
+    # c_weather = c_weather.drop(['', ''], axis=1)
 
     # 4. create full network file
     # merge r_multiplex_1 on date and county id
