@@ -1,1 +1,59 @@
+import glob
+import pandas as pd
+import random
+from random import shuffle
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.tree import DecisionTreeClassifier
+from sklearn import svm
+from sklearn import tree
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import MinMaxScaler
+import numpy as np
+from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline as imbpipeline
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+import matplotlib.pyplot as plt
+import os
+import chardet
+from tqdm import tqdm
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import plot_tree
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
+tqdm.pandas(desc="progress-bar")
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from stellargraph.data import BiasedRandomWalk
+from stellargraph import StellarGraph
+from gensim.models import Word2Vec
+from imblearn.over_sampling import RandomOverSampler
+from sklearn.inspection import permutation_importance
+import warnings
+warnings.filterwarnings('ignore')
 
+def graph_emb(df):
+    df = df.rename(columns={'n1': 'source', 'n2': 'target',
+                            'w': 'weight', 'l': 'layer'})
+    columns = ['source', 'target', 'weight']
+    graph = df[columns].copy()
+    # label = df['label'][0].astype(int)
+    g = StellarGraph(edges=graph, is_directed=False)
+    # Random Walks
+    rw = BiasedRandomWalk(g)
+    walks = rw.run(nodes=list(g.nodes()), length=100, n=10,  p=0.5, q=2.0)
+
+    str_walks = [[str(n) for n in walk] for walk in walks]
+    model = Word2Vec(str_walks, window=5, min_count=0, sg=1, vector_size=100)
+    # Retrieve node embeddings and corresponding subjects
+    node_ids = model.wv.index_to_key  # list of node IDs
+    node_embeddings = (model.wv.vectors)
+
+    # Method 4: max embeddings
+    if (node_embeddings.shape[0] > 1):
+        node_embeddings = np.mean(node_embeddings, axis=0)
+    return node_embeddings
