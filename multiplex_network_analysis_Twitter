@@ -39,7 +39,7 @@ from sys import argv
 from itertools import chain
 from py3plex.core import random_generators
 
-## Proporties using Py3Plex
+##Proporties using Py3Plex
 # read multiplex network
 r_multiplex = multinet.multi_layer_network(network_type = "multiplex").load_network("network/twitter_multiplex_adj_list.txt", directed=False, input_type="multiplex_edges")
 
