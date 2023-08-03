@@ -9,7 +9,7 @@ def main ():
     pd.set_option('display.max_colwidth', None)
     path_in = 'data/'
 
-    #read vegitation file
+    # read vegitation file
     vegetation = pd.read_csv(path_in + 'vegetation_layer_FIPS.csv', sep=',')
     vegetation = vegetation.set_index('county')
 
