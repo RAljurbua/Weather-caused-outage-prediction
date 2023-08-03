@@ -8,7 +8,7 @@ def main ():
     pd.set_option('display.max_colwidth', None)
     path_in = 'data/'
 
-    #read transmission lines file
+    # read transmission lines file
     transmission = pd.read_csv(path_in + 'BPA_TransmissionLines_layer_FIPS.csv', sep=',')
 
     # unfold transmission lines
