@@ -42,7 +42,7 @@ def main ():
     n_twitter = pd.read_csv(path_in + 'network/layers/twitter_layer.csv', sep=',')
     n_reddit = pd.read_csv(path_in + 'network/layers/reddit_layer.csv', sep=',')
 
-    # Dataset Stats
+    # dataset Stats
     print('Number of examples for classification: ' + str(c_weather.shape))
     print('Number of examples for label 0: ' + str(len(c_weather[(c_weather['label'] == 0)])))
     print('Number of examples for  label 1: ' + str(len(c_weather[(c_weather['label'] == 1)])))
